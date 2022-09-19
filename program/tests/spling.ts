@@ -1,7 +1,7 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
 import { Spling } from "../target/types/spling";
-import { PublicKey } from '@solana/web3.js'
+import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
 
 describe("spling", () => {
 
@@ -39,7 +39,6 @@ describe("spling", () => {
 
 
   it("Creates User Profile", async () => {
-  
 
     const [SplingPDA] = await PublicKey.findProgramAddress(
       [
@@ -56,10 +55,8 @@ describe("spling", () => {
       program.programId
     )
 
-    const shdw = anchor.web3.Keypair.generate();
-
       await program.methods
-      .createUserProfile(shdw.publicKey)
+      .createUserProfile("ipfs://QmaJ5xTB9FkHeKK8gLh2WwHSGe38J4mfkXEAzcGY6agb4s")
       .accounts({
         user: provider.wallet.publicKey,
         spling: SplingPDA,
@@ -69,12 +66,105 @@ describe("spling", () => {
 
       const user_id = await program.account.userProfile.fetch(UserProfilePDA);
       console.log(user_id);
+  });
 
+  it("Follows a user", async () => {
+    const [SplingPDA] = await PublicKey.findProgramAddress(
+      [
+        anchor.utils.bytes.utf8.encode('spling'),
+      ],
+      program.programId
+    )
+    
+    const following = anchor.web3.Keypair.generate();
+    const follower = anchor.web3.Keypair.generate();
+
+    const fromAirDropSignature1 =  await provider.connection.requestAirdrop(following.publicKey, 1*LAMPORTS_PER_SOL);
+    const fromAirDropSignature2 =await provider.connection.requestAirdrop(follower.publicKey, 1*LAMPORTS_PER_SOL);
+
+    await provider.connection.confirmTransaction(fromAirDropSignature1);
+    await provider.connection.confirmTransaction(fromAirDropSignature2);
+
+    const [UserFollowingProfilePDA] = await PublicKey.findProgramAddress(
+      [
+        anchor.utils.bytes.utf8.encode('user_profile'),
+        following.publicKey.toBuffer(),
+      ],
+      program.programId
+    )
+
+    const [UserFollowerProfilePDA] = await PublicKey.findProgramAddress(
+      [
+        anchor.utils.bytes.utf8.encode('user_profile'),
+        follower.publicKey.toBuffer(),
+      ],
+      program.programId
+    )
+
+    await program.methods
+      .createUserProfile("ipfs://QmaJ5xTB9FkHeKK8gLh2WwHSGe38J4mfkXEAzcGY6agb4s")
+      .accounts({
+        user: following.publicKey,
+        spling: SplingPDA,
+        userProfile: UserFollowingProfilePDA,
+      })
+      .signers([following])
+      .rpc()
+    
+    await program.methods
+      .createUserProfile("ipfs://QmaJ5xTB9FkHeKK8gLh2WwHSGe38J4mfkXEAzcGY6agb4s")
+      .accounts({
+        user: follower.publicKey,
+        spling: SplingPDA,
+        userProfile: UserFollowerProfilePDA,
+      })
+      .signers([follower])
+      .rpc()
+    
+    const [FollowerPDA] = await PublicKey.findProgramAddress(
+      [
+        anchor.utils.bytes.utf8.encode('follower'),
+        following.publicKey.toBuffer(),
+      ],
+      program.programId
+    )
+
+
+    await program.methods
+      .followUser()
+      .accounts({
+        user: follower.publicKey,
+        userAccount: UserFollowerProfilePDA,
+        followingAccount: UserFollowingProfilePDA,
+        spling: SplingPDA,
+        follower: FollowerPDA,
+      })
+      .signers([follower])
+      .rpc()
+
+    const follow_id = await program.account.follower.fetch(FollowerPDA);
+
+    const followersResult = await program.account.follower.all([{
+      memcmp: {
+        offset: 16, // number of bytes
+        bytes: follow_id.following.toBase58(), // base58 encoded string
+      },
+    }])
+
+    const followingResult = await program.account.follower.all([{
+      memcmp: {
+        offset: 48, // number of bytes
+        bytes: follow_id.user.toBase58(), // base58 encoded string
+      },
+    }])
+
+    console.log(followersResult);
+    console.log(followingResult);
   });
 
 
 
-  it("Creates Group Profile", async () => {
+  it.skip("Creates Group Profile", async () => {
   
 
     const [SplingPDA] = await PublicKey.findProgramAddress(
@@ -110,7 +200,7 @@ describe("spling", () => {
 
 
 
-  it("Submits a post", async () => {
+  it.skip("Submits a post", async () => {
 
     const [SplingPDA] = await PublicKey.findProgramAddress(
       [
@@ -152,7 +242,7 @@ describe("spling", () => {
   });
 
 
-  it("Join a group", async () => {
+  it.skip("Join a group", async () => {
 
     const [SplingPDA] = await PublicKey.findProgramAddress(
       [
@@ -186,7 +276,7 @@ describe("spling", () => {
   });
 
 
-  it("Follow another user", async () => {
+  it.skip("Follow another user", async () => {
 
     const [SplingPDA] = await PublicKey.findProgramAddress(
       [
@@ -221,7 +311,7 @@ describe("spling", () => {
 
 
 
-  it("Check spling", async () => {
+  it.skip("Check spling", async () => {
   
     const [SplingPDA] = await PublicKey.findProgramAddress(
       [
@@ -235,13 +325,13 @@ describe("spling", () => {
 
   });
 
-  it("Show group membership", async () => {
+  it.skip("Show group membership", async () => {
     const spling = await program.account.userProfile.all();
     console.log(spling[0].account.groups);
   });
 
 
-  it("Unfollow another user", async () => {
+  it.skip("Unfollow another user", async () => {
 
     const [SplingPDA] = await PublicKey.findProgramAddress(
       [
@@ -274,7 +364,7 @@ describe("spling", () => {
 
   });
 
-  it("Leave a group", async () => {
+  it.skip("Leave a group", async () => {
 
     const [SplingPDA] = await PublicKey.findProgramAddress(
       [
@@ -307,7 +397,7 @@ describe("spling", () => {
 
   });
 
-  it("Show group memberships", async () => {
+  it.skip("Show group memberships", async () => {
     const spling = await program.account.userProfile.all();
     console.log(spling[0].account.groups);
   });
@@ -315,7 +405,7 @@ describe("spling", () => {
 
 
 
-  it("Delete a post", async () => {
+  it.skip("Delete a post", async () => {
 
     const [SplingPDA] = await PublicKey.findProgramAddress(
       [

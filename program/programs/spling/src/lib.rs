@@ -25,7 +25,7 @@ pub mod spling {
     }
 
     // a user can add a profile, of which the content is stored on the Shadow Drive
-    pub fn create_user_profile(ctx: Context<CreateUserProfile>, shdw: Pubkey) -> Result<()> {
+    pub fn create_user_profile(ctx: Context<CreateUserProfile>, uri: String) -> Result<()> {
         let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let user: &Signer = &ctx.accounts.user;
@@ -44,8 +44,8 @@ pub mod spling {
         // status (st) is standard 1, can have future utility for moderation purposes
         user_profile.st = 1;
 
-        // public key of user's Shadow Drive storage account is stored here
-        user_profile.shdw = shdw;
+        // Profile data
+        user_profile.uri = uri;
 
         // UserProfile is a PDA, so here we store the bump
         user_profile.bump = *ctx.bumps.get("user_profile").unwrap();
@@ -54,7 +54,7 @@ pub mod spling {
     }
 
     // create a group profile, of which the content is stored on the Shadow Drive
-    pub fn create_group_profile(ctx: Context<CreateGroupProfile>, shdw: Pubkey) -> Result<()> {
+    pub fn create_group_profile(ctx: Context<CreateGroupProfile>) -> Result<()> {
         let group_profile: &mut Account<GroupProfile> = &mut ctx.accounts.group_profile;
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
         let user: &Signer = &ctx.accounts.user;
@@ -74,9 +74,6 @@ pub mod spling {
         // status (st) is standard 1, can have future utility for moderation purposes
         group_profile.st = 1;
 
-        // public key of group's Shadow Drive storage account is stored here
-        group_profile.shdw = shdw;
-
         // GroupId is a PDA, so here we store the bump
         group_profile.bump = *ctx.bumps.get("group_profile").unwrap();
 
@@ -89,8 +86,7 @@ pub mod spling {
         let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
         let _user: &Signer = &ctx.accounts.user;
 
-        // add group id to vector
-        user_profile.groups.push(address);
+        // TODO: Add group account
 
         Ok(())
     }
@@ -101,21 +97,25 @@ pub mod spling {
         let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
         let _user: &Signer = &ctx.accounts.user;
 
-        // retain all user id's except for the user id to be deleted
-        user_profile.groups.retain(|x| *x != address);
+        // TODO: Close group account
 
         Ok(())
     }
 
     // user can follow another user
     // part of an open social graph
-    pub fn follow_user(ctx: Context<FollowUser>, address: u32) -> Result<()> {
+    pub fn follow_user(ctx: Context<FollowUser>) -> Result<()> {
         let spling: &mut Account<Spling> = &mut ctx.accounts.spling;
-        let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
-        let _user: &Signer = &ctx.accounts.user;
-
-        // add user id to vector
-        user_profile.following.push(address);
+        let user: &Signer = &ctx.accounts.user;
+        let user_account = &ctx.accounts.user_account;
+        let following_account = &ctx.accounts.following_account;
+        let follower: &mut Account<Follower> = &mut ctx.accounts.follower;
+        let clock: Clock = Clock::get().unwrap();
+        
+        follower.ts = clock.unix_timestamp;
+        follower.user = user_account.key();
+        follower.following = following_account.key();
+        follower.bump = *ctx.bumps.get("follower").unwrap();
 
         Ok(())
     }
@@ -126,8 +126,7 @@ pub mod spling {
         let user_profile: &mut Account<UserProfile> = &mut ctx.accounts.user_profile;
         let _user: &Signer = &ctx.accounts.user;
 
-        // retain all user id's except for the user id to be deleted
-        user_profile.following.retain(|x| *x != address);
+        // TODO: Close followers account
 
         Ok(())
     }
@@ -216,9 +215,15 @@ pub struct UserProfile {
     pub user: Pubkey,           // user public key
     pub uid: u32,               // user id (max 4,294,967,295)
     pub st: u8,                 // status (default = 1)
-    pub shdw: Pubkey,           // public key of user's shadow storage account
-    pub groups: Vec<u32>,       // group id's the user is member of
-    pub following: Vec<u32>,    // user id's the user is following
+    pub uri: String,            // offchain uri
+    pub bump: u8,   
+}
+
+#[account]
+pub struct Follower {   
+    pub ts: i64,                // timestamp
+    pub following: Pubkey,      // the user being followed
+    pub user: Pubkey,           // the user who is following
     pub bump: u8,   
 }
 
@@ -235,7 +240,7 @@ pub struct GroupProfile {
     pub group: Pubkey,          // user public key
     pub gid: u32,               // group id (max 4,294,967,295)
     pub st: u8,                 // status (default = 1)
-    pub shdw: Pubkey,           // public key of group's shadow storage account
+    pub uri: String,            // off chain group data
     pub bump: u8,   
 }
 
@@ -285,6 +290,7 @@ pub struct SetupSpling<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(uri: String)]
 pub struct CreateUserProfile<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
@@ -292,7 +298,7 @@ pub struct CreateUserProfile<'info> {
     #[account(mut, seeds = [b"spling"], bump = spling.bump)]
     pub spling: Account<'info, Spling>,
     // create new user profile account, using the user id as seed
-    #[account(init, payer = user, space = 8 + mem::size_of::<UserProfile>(), seeds = [b"user_profile".as_ref(), user.key().as_ref()], bump)]
+    #[account(init, payer = user, space = 64 + mem::size_of::<UserProfile>(), seeds = [b"user_profile".as_ref(), user.key().as_ref()], bump)]
     pub user_profile: Account<'info, UserProfile>,
     #[account(address = system_program::ID)]
     pub system_program: Program<'info, System>,
@@ -304,7 +310,7 @@ pub struct DeleteUserProfile<'info> {
     pub user: Signer<'info>,
     #[account(mut, seeds = [b"spling"], bump = spling.bump)]
     pub spling: Account<'info, Spling>,
-    #[account(mut, seeds = [b"user_profile".as_ref(), user.key().as_ref() ], bump = user_profile.bump, has_one = user, close = spling)]
+    #[account(mut, seeds = [b"user_profile".as_ref(), user.key().as_ref()], bump = user_profile.bump, has_one = user, close = spling)]
     pub user_profile: Account<'info, UserProfile>,
     #[account(address = system_program::ID)]
     pub system_program: Program<'info, System>,
@@ -378,19 +384,12 @@ pub struct LeaveGroup<'info> {
 pub struct FollowUser<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    #[account(mut, seeds = [b"spling"], bump = spling.bump)]
     pub spling: Account<'info, Spling>,
-    // increase user profile account size, with 4 (u32) to accomodate adding the user id to the user's follows
-    #[account(
-        mut, 
-        seeds = [b"user_profile", user.key().as_ref()],
-        bump = user_profile.bump,
-        has_one = user,
-        realloc = 8 + std::mem::size_of::<UserProfile>() + 4,
-        realloc::payer = user,
-        realloc::zero = false,
-    )]
-    pub user_profile: Account<'info, UserProfile>,
+    pub following_account: Account<'info, UserProfile>,
+    pub user_account: Account<'info, UserProfile>,
+    
+    #[account(init, payer = user, space = 8 + mem::size_of::<Follower>(), seeds = [b"follower".as_ref(), following_account.user.key().as_ref()], bump)]
+    pub follower: Account<'info, Follower>,
     #[account(address = system_program::ID)]
     pub system_program: Program<'info, System>,
 }

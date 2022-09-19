@@ -49,8 +49,8 @@ export type Spling = {
       ],
       "args": [
         {
-          "name": "shdw",
-          "type": "publicKey"
+          "name": "uri",
+          "type": "string"
         }
       ]
     },
@@ -78,12 +78,7 @@ export type Spling = {
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "shdw",
-          "type": "publicKey"
-        }
-      ]
+      "args": []
     },
     {
       "name": "joinGroup",
@@ -157,11 +152,21 @@ export type Spling = {
         },
         {
           "name": "spling",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
-          "name": "userProfile",
+          "name": "followingAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "userAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "follower",
           "isMut": true,
           "isSigner": false
         },
@@ -171,12 +176,7 @@ export type Spling = {
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "address",
-          "type": "u32"
-        }
-      ]
+      "args": []
     },
     {
       "name": "unfollowUser",
@@ -447,20 +447,32 @@ export type Spling = {
             "type": "u8"
           },
           {
-            "name": "shdw",
-            "type": "publicKey"
+            "name": "uri",
+            "type": "string"
           },
           {
-            "name": "groups",
-            "type": {
-              "vec": "u32"
-            }
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "follower",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ts",
+            "type": "i64"
           },
           {
             "name": "following",
-            "type": {
-              "vec": "u32"
-            }
+            "type": "publicKey"
+          },
+          {
+            "name": "user",
+            "type": "publicKey"
           },
           {
             "name": "bump",
@@ -511,8 +523,8 @@ export type Spling = {
             "type": "u8"
           },
           {
-            "name": "shdw",
-            "type": "publicKey"
+            "name": "uri",
+            "type": "string"
           },
           {
             "name": "bump",
@@ -575,8 +587,8 @@ export const IDL: Spling = {
       ],
       "args": [
         {
-          "name": "shdw",
-          "type": "publicKey"
+          "name": "uri",
+          "type": "string"
         }
       ]
     },
@@ -604,12 +616,7 @@ export const IDL: Spling = {
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "shdw",
-          "type": "publicKey"
-        }
-      ]
+      "args": []
     },
     {
       "name": "joinGroup",
@@ -683,11 +690,21 @@ export const IDL: Spling = {
         },
         {
           "name": "spling",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
-          "name": "userProfile",
+          "name": "followingAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "userAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "follower",
           "isMut": true,
           "isSigner": false
         },
@@ -697,12 +714,7 @@ export const IDL: Spling = {
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "address",
-          "type": "u32"
-        }
-      ]
+      "args": []
     },
     {
       "name": "unfollowUser",
@@ -973,20 +985,32 @@ export const IDL: Spling = {
             "type": "u8"
           },
           {
-            "name": "shdw",
-            "type": "publicKey"
+            "name": "uri",
+            "type": "string"
           },
           {
-            "name": "groups",
-            "type": {
-              "vec": "u32"
-            }
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "follower",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ts",
+            "type": "i64"
           },
           {
             "name": "following",
-            "type": {
-              "vec": "u32"
-            }
+            "type": "publicKey"
+          },
+          {
+            "name": "user",
+            "type": "publicKey"
           },
           {
             "name": "bump",
@@ -1037,8 +1061,8 @@ export const IDL: Spling = {
             "type": "u8"
           },
           {
-            "name": "shdw",
-            "type": "publicKey"
+            "name": "uri",
+            "type": "string"
           },
           {
             "name": "bump",
